@@ -25,7 +25,13 @@ if uploaded_file is not None:
     st.dataframe(dt.head())
     group_col = 'Movie'
     dt.columns = dt.columns.str.strip()
-    category_col = st.selectbox("Select Column", dt.columns.to_list())    
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        category_col = st.selectbox("Select Column", dt.columns.to_list())    
+    with col2:
+        palette = st.selectbox("Select Color Palette", ["Set2", "Dark2", "muted", "colorblind", "husl", "deep"])
+    
     dt[category_col] = dt[category_col].str.strip()
     dt[category_col] = dt[category_col].str.capitalize()
     dt[category_col] = dt[category_col].str.replace('/ ', '/', regex=False)
@@ -40,7 +46,6 @@ if uploaded_file is not None:
     total_counts = count_df.groupby(category_col)['count'].sum().sort_values(ascending=False)
     count_df[category_col] = pd.Categorical(count_df[category_col], categories=total_counts.index, ordered=True)
 
-    palette = st.selectbox("Select Color Palette", ["Set2", "Dark2", "muted", "colorblind", "husl", "deep"])
 
     # Plotting
     plt.figure(figsize=(10, 6))
