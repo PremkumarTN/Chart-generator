@@ -47,12 +47,12 @@ if uploaded_file is not None:
     count_df[category_col] = pd.Categorical(count_df[category_col], categories=total_counts.index, ordered=True)
 
     # Calculate total counts by group_col
-    summary_df = df.groupby(group_col)[category_col].count().reset_index(name="Total")
+    summary_df = dt.groupby(group_col)[category_col].count().reset_index(name="Total")
 
     # Show KPI-style summary
     st.subheader(f"🔢 Total '{category_col}' Count by '{group_col}'")
     st.dataframe(summary_df)
-    
+
     # Plotting
     plt.figure(figsize=(10, 6))
     sns.set_theme(style="whitegrid")
