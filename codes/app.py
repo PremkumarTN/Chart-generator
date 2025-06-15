@@ -66,6 +66,7 @@ if uploaded_file is not None:
 
     title = f"{category_col} Count by {group_col}"
     plt.title(title, fontsize=16, fontweight='bold')
+    plt.legend(loc='lower right', title=group_col)
     plt.xlabel("Count")
     plt.ylabel(category_col)
     plt.tight_layout()
