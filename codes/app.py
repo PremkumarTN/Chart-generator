@@ -7,7 +7,7 @@ from plot_graphs import plot_grouped_horizontal_bars
 
 
 st.set_page_config(page_title="Chart Generator", layout="wide")
-st.title("📊 Movie Analysis Chart Generator")
+st.title("📊 Movie Analysis Chart-Generator")
 uploaded_file = st.file_uploader("Upload an Excel file with Movie data in each sheets", type=["xlsx"])
 
 if uploaded_file is not None:
