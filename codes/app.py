@@ -1,3 +1,5 @@
+import os
+import tempfile
 import pandas as pd
 import seaborn as sns
 import streamlit as st
@@ -70,6 +72,12 @@ if uploaded_file is not None:
     st.subheader("📊 Chart")
     st.pyplot(plt)
 
+    # Save plot to temp path and offer download
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, f"{title}.png")
+        plt.savefig(path, dpi=300, bbox_inches='tight')
+        with open(path, "rb") as f:
+            st.download_button("📥 Download Chart as PNG", f, f"{title}.png", "image/png")
 
 else:
     st.info("📂 Please upload Excel file to begin.")
