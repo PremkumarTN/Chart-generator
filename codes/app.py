@@ -25,12 +25,13 @@ if uploaded_file is not None:
     st.dataframe(dt.head())
     group_col = 'Movie'
     dt.columns = dt.columns.str.strip()
+    dt = dt.astype(str)
     
     col1, col2, col3 = st.columns(3)
     with col1:
         category_col = st.selectbox("Select Column", dt.columns.to_list())    
     with col2:
-        chart_type = st.selectbox("Select Chart Type", ["Bar Chart", "Pie Chart"])
+        chart_type = st.selectbox("Select Chart Type", ["Bar Chart 2","Bar Chart", "Pie Chart"])
     with col3:
         palette = st.selectbox("Select Color Palette", ["Set2", "Dark2", "muted", "colorblind", "husl", "deep"])
     
@@ -46,10 +47,18 @@ if uploaded_file is not None:
 
     # Show KPI-style summary
     st.subheader(f"🔢 Total '{category_col}' Count by '{group_col}'")
+    order_map = {"Managaram": 1, "Kaithi": 2, "Master": 3, "Vikram": 4, "Leo": 5,"MANAGARAM": 1, "KAITHI": 2, "MASTER": 3, "VIKRAM": 4, "LEO": 5}
+    summary_df["Rank"] = summary_df[group_col].map(order_map)
+    summary_df = summary_df.sort_values("Rank").drop(columns="Rank").reset_index(drop=True)
     st.dataframe(summary_df)
+
     if chart_type == "Bar Chart":
         # Compute grouped counts
-        count_df = dt.groupby([category_col, group_col]).size().reset_index(name='count')
+        if group_col==category_col:
+            count_df = dt.groupby([category_col]).size().reset_index(name='count')
+        else:
+            count_df = dt.groupby([category_col, group_col]).size().reset_index(name='count')
+
         
         # Compute total counts for sorting
         total_counts = count_df.groupby(category_col)['count'].sum().sort_values(ascending=False)
@@ -78,6 +87,53 @@ if uploaded_file is not None:
         plt.xlabel("Count")
         plt.ylabel(category_col)
         plt.legend(loc='lower right', title=group_col)
+        plt.tight_layout()
+    
+    elif chart_type == "Bar Chart 2":
+        # Build all category+group combinations
+        all_categories = dt[category_col].unique()
+        all_groups = dt[group_col].unique()
+
+        # Count, fill missing with 0
+        if group_col==category_col:
+            idx = pd.MultiIndex.from_product([all_categories], names=[category_col])
+            count_series = dt.groupby([category_col]).size().reindex(idx, fill_value=0)
+        else:
+            idx = pd.MultiIndex.from_product([all_categories, all_groups], names=[category_col, group_col])
+            count_series = dt.groupby([category_col, group_col]).size().reindex(idx, fill_value=0)
+        count_df = count_series.reset_index(name='count')
+
+        # Percent by group
+        group_totals = count_df.groupby(group_col)['count'].transform('sum').replace(0, 1)
+        count_df['percent'] = count_df['count'] / group_totals
+
+        # Label
+        count_df['label'] = count_df['count'].astype(str) + ' (' + (count_df['percent']*100).round(1).astype(str) + '%)'
+
+        # Plot
+        plt.figure(figsize=(10, 6))
+        sns.set_theme(style="whitegrid")
+        ax = sns.barplot(
+            data=count_df,
+            y=category_col,
+            x='count',
+            hue=group_col if group_col else None,
+            orient='h',
+            palette=palette
+        )
+        for container, (group_val, group_data) in zip(ax.containers, count_df.groupby(group_col)):
+            labels = group_data['label'].tolist()
+            # Filter only real bars
+            bars = [bar for bar in container if bar is not None and bar.get_width() > 0]
+            if len(bars) == len(labels):
+                ax.bar_label(bars, labels=labels, label_type='edge', padding=2, fontsize=9)
+
+        title = f"{category_col} Count" + (f" by {group_col}" if group_col else "")
+        plt.title(title, fontsize=16, fontweight='bold')
+        plt.xlabel("Count")
+        plt.ylabel(category_col)
+        if group_col:
+            plt.legend(loc='lower right', title=group_col)
         plt.tight_layout()
 
     elif chart_type == "Pie Chart":
