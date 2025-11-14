@@ -31,7 +31,7 @@ if uploaded_file is not None:
     with col1:
         category_col = st.selectbox("Select Column", dt.columns.to_list())    
     with col2:
-        chart_type = st.selectbox("Select Chart Type", ["Bar Chart 2","Bar Chart", "Pie Chart"])
+        chart_type = st.selectbox("Select Chart Type", ["Bar Chart", "Bar Chart 2", "Pie Chart"])
     with col3:
         palette = st.selectbox("Select Color Palette", ["Set2", "Dark2", "muted", "colorblind", "husl", "deep"])
     
