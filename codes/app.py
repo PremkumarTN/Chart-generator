@@ -31,7 +31,7 @@ if uploaded_file is not None:
     with col1:
         category_col = st.selectbox("Select Column", dt.columns.to_list())    
     with col2:
-        chart_type = st.selectbox("Select Chart Type", ["Bar Chart", "Bar Chart 2", "Pie Chart"])
+        chart_type = st.selectbox("Select Chart Type", ["Bar Chart 2", "Bar Chart", "Pie Chart"])
     with col3:
         palette = st.selectbox("Select Color Palette", ["Set2", "Dark2", "muted", "colorblind", "husl", "deep"])
     
@@ -95,12 +95,12 @@ if uploaded_file is not None:
         all_groups = dt[group_col].unique()
 
         # Count, fill missing with 0
-        if group_col==category_col:
-            idx = pd.MultiIndex.from_product([all_categories], names=[category_col])
-            count_series = dt.groupby([category_col]).size().reindex(idx, fill_value=0)
-        else:
-            idx = pd.MultiIndex.from_product([all_categories, all_groups], names=[category_col, group_col])
-            count_series = dt.groupby([category_col, group_col]).size().reindex(idx, fill_value=0)
+        # if group_col==category_col:
+        #     idx = pd.MultiIndex.from_product([all_categories], names=[category_col])
+        #     count_series = dt.groupby([category_col]).size().reindex(idx, fill_value=0)
+        # else:
+        idx = pd.MultiIndex.from_product([all_categories, all_groups], names=[category_col, group_col])
+        count_series = dt.groupby([category_col, group_col]).size().reindex(idx, fill_value=0)
         count_df = count_series.reset_index(name='count')
 
         # Percent by group
