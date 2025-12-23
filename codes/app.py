@@ -88,53 +88,210 @@ if uploaded_file is not None:
         plt.ylabel(category_col)
         plt.legend(loc='lower right', title=group_col)
         plt.tight_layout()
-    
+
+    # =======================
+    # BAR CHART 2 (FIXED)
+    # =======================
     elif chart_type == "Bar Chart 2":
-        # Build all category+group combinations
-        all_categories = dt[category_col].unique()
-        all_groups = dt[group_col].unique()
 
-        # Count, fill missing with 0
-        # if group_col==category_col:
-        #     idx = pd.MultiIndex.from_product([all_categories], names=[category_col])
-        #     count_series = dt.groupby([category_col]).size().reindex(idx, fill_value=0)
-        # else:
-        idx = pd.MultiIndex.from_product([all_categories, all_groups], names=[category_col, group_col])
-        count_series = dt.groupby([category_col, group_col]).size().reindex(idx, fill_value=0)
-        count_df = count_series.reset_index(name='count')
+        # -------------------------------------------------
+        # 1. Remove only 'nan' strings from uniques
+        # -------------------------------------------------
+        all_categories = [
+            x for x in dt[category_col].unique()
+            if str(x).lower() != "nan"
+        ]
+        all_groups = [
+            x for x in dt[group_col].unique()
+            if str(x).lower() != "nan"
+        ]
 
-        # Percent by group
-        group_totals = count_df.groupby(group_col)['count'].transform('sum').replace(0, 1)
-        count_df['percent'] = count_df['count'] / group_totals
+        # -------------------------------------------------
+        # 2. Build full index (fill missing combos with 0)
+        # -------------------------------------------------
+        idx = pd.MultiIndex.from_product(
+            [all_categories, all_groups],
+            names=[category_col, group_col]
+        )
 
-        # Label
-        count_df['label'] = count_df['count'].astype(str) + ' (' + (count_df['percent']*100).round(1).astype(str) + '%)'
+        count_series = (
+            dt.groupby([category_col, group_col])
+            .size()
+            .reindex(idx, fill_value=0)
+        )
 
-        # Plot
+        count_df = count_series.reset_index(name="count")
+
+        # -------------------------------------------------
+        # 3. Apply Movie order ONLY to Movie column
+        # -------------------------------------------------
+        order_map = {
+            "Managaram": 1, "Kaithi": 2, "Master": 3,
+            "Vikram": 4, "Leo": 5,
+            "MANAGARAM": 1, "KAITHI": 2,
+            "MASTER": 3, "VIKRAM": 4, "LEO": 5
+        }
+
+        # Category order (only if category IS Movie)
+        if category_col == group_col:
+            category_order = [
+                k for k, _ in sorted(order_map.items(), key=lambda x: x[1])
+                if k in count_df[category_col].unique()
+            ]
+        else:
+            category_order = None
+
+        # Group order (Movie)
+        group_order = [
+            k for k, _ in sorted(order_map.items(), key=lambda x: x[1])
+            if k in count_df[group_col].unique()
+        ]
+
+        # -------------------------------------------------
+        # 4. Convert to categorical safely
+        # -------------------------------------------------
+        if category_order is not None:
+            count_df[category_col] = pd.Categorical(
+                count_df[category_col],
+                categories=category_order,
+                ordered=True
+            )
+
+        count_df[group_col] = pd.Categorical(
+            count_df[group_col],
+            categories=group_order,
+            ordered=True
+        )
+
+        # -------------------------------------------------
+        # 5. Build labels
+        # -------------------------------------------------
+        group_totals = (
+            count_df.groupby(group_col)["count"]
+            .transform("sum")
+            .replace(0, 1)
+        )
+
+        count_df["percent"] = count_df["count"] / group_totals
+        count_df["label"] = (
+            count_df["count"].astype(str)
+            + " ("
+            + (count_df["percent"] * 100).round(1).astype(str)
+            + "%)"
+        )
+
+        # -------------------------------------------------
+        # 6. Plot
+        # -------------------------------------------------
         plt.figure(figsize=(10, 6))
         sns.set_theme(style="whitegrid")
+
         ax = sns.barplot(
             data=count_df,
             y=category_col,
-            x='count',
-            hue=group_col if group_col else None,
-            orient='h',
-            palette=palette
+            x="count",
+            hue=group_col,
+            orient="h",
+            palette=palette,
+            order=category_order,        # None is safe
+            hue_order=group_order
         )
-        for container, (group_val, group_data) in zip(ax.containers, count_df.groupby(group_col)):
-            labels = group_data['label'].tolist()
-            # Filter only real bars
-            bars = [bar for bar in container if bar is not None and bar.get_width() > 0]
-            if len(bars) == len(labels):
-                ax.bar_label(bars, labels=labels, label_type='edge', padding=2, fontsize=9)
 
-        title = f"{category_col} Count" + (f" by {group_col}" if group_col else "")
-        plt.title(title, fontsize=16, fontweight='bold')
+        # -------------------------------------------------
+        # 7. PERFECT LABEL ALIGNMENT (ORDER-SAFE)
+        # -------------------------------------------------
+        legend_labels = [t.get_text() for t in ax.legend_.texts]
+
+        for container, group_val in zip(ax.containers, legend_labels):
+            for bar, category in zip(container, ax.get_yticklabels()):
+                width = bar.get_width()
+                if width <= 0:
+                    continue
+
+                row = count_df[
+                    (count_df[group_col] == group_val) &
+                    (count_df[category_col] == category.get_text())
+                ]
+
+                if row.empty:
+                    continue
+
+                label = row["label"].iloc[0]
+
+                ax.text(
+                    width + 0.1,
+                    bar.get_y() + bar.get_height() / 2,
+                    label,
+                    va="center",
+                    ha="left",
+                    fontsize=9
+                )
+
+        # -------------------------------------------------
+        # 8. Titles & layout
+        # -------------------------------------------------
+        title = f"{category_col} Count by {group_col}"
+        plt.title(title, fontsize=16, fontweight="bold")
         plt.xlabel("Count")
         plt.ylabel(category_col)
-        if group_col:
-            plt.legend(loc='lower right', title=group_col)
-        plt.tight_layout()
+        # plt.legend(loc="lower right", title=group_col)
+        # plt.tight_layout()
+        ax.legend(
+            title=group_col,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.18),
+            ncol=len(ax.containers),
+            frameon=False
+        )
+
+        plt.tight_layout(rect=[0, 0.1, 1, 1])
+    
+    # elif chart_type == "Bar Chart 2":
+    #     # Build all category+group combinations
+    #     all_categories = [x for x in dt[category_col].unique() if str(x).lower() != "nan"]
+    #     all_groups = dt[group_col].unique()
+
+    #     # Count, fill missing with 0
+    #     # if group_col==category_col:
+    #     #     idx = pd.MultiIndex.from_product([all_categories], names=[category_col])
+    #     #     count_series = dt.groupby([category_col]).size().reindex(idx, fill_value=0)
+    #     # else:
+    #     idx = pd.MultiIndex.from_product([all_categories, all_groups], names=[category_col, group_col])
+    #     count_series = dt.groupby([category_col, group_col]).size().reindex(idx, fill_value=0)
+    #     count_df = count_series.reset_index(name='count')
+
+    #     # Percent by group
+    #     group_totals = count_df.groupby(group_col)['count'].transform('sum').replace(0, 1)
+    #     count_df['percent'] = count_df['count'] / group_totals
+
+    #     # Label
+    #     count_df['label'] = count_df['count'].astype(str) + ' (' + (count_df['percent']*100).round(1).astype(str) + '%)'
+
+    #     # Plot
+    #     plt.figure(figsize=(10, 6))
+    #     sns.set_theme(style="whitegrid")
+    #     ax = sns.barplot(
+    #         data=count_df,
+    #         y=category_col,
+    #         x='count',
+    #         hue=group_col if group_col else None,
+    #         orient='h',
+    #         palette=palette
+    #     )
+    #     for container, (group_val, group_data) in zip(ax.containers, count_df.groupby(group_col)):
+    #         labels = group_data['label'].tolist()
+    #         # Filter only real bars
+    #         # bars = [bar for bar in container if bar is not None and bar.get_width() > 0]
+    #         if len(container) == len(labels):
+    #             ax.bar_label(container, labels=labels, label_type='edge', padding=2, fontsize=9)
+
+    #     title = f"{category_col} Count" + (f" by {group_col}" if group_col else "")
+    #     plt.title(title, fontsize=16, fontweight='bold')
+    #     plt.xlabel("Count")
+    #     plt.ylabel(category_col)
+    #     if group_col:
+    #         plt.legend(loc='lower right', title=group_col)
+    #     plt.tight_layout()
 
     elif chart_type == "Pie Chart":
         if group_col:
