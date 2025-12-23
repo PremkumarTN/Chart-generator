@@ -9,12 +9,15 @@ st.set_page_config(page_title="Chart Generator", layout="wide")
 st.title("📊 Movie Analysis Chart-Generator")
 uploaded_file = st.file_uploader("Upload an Excel file with Movie data in each sheets", type=["xlsx"])
 
+# uploaded_file = r"D:\personal\Selvaraj\data\PREM Compiled Analysis 23 Dec.xlsx"
+
 if uploaded_file is not None:
     xls = pd.ExcelFile(uploaded_file)
     sheet_names = xls.sheet_names
     df_list = []
     for sheet in sheet_names:
         df = pd.read_excel(uploaded_file, sheet_name=sheet)
+        df.columns = df.columns.str.strip()
         df['Movie'] = sheet
         df_list.append(df)
 
